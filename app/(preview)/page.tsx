@@ -131,13 +131,15 @@ export default function Home() {
               rtl={!!object?.rtl}
             />
 
-            <p className="mt-4 text-center text-xs text-zinc-400 dark:text-zinc-500 md:hidden">
+            <p className="mt-4 text-center text-xs text-zinc-400 dark:text-zinc-500 lg:hidden">
               Tap a word to reveal it. Tap again to cycle.
             </p>
           </>
         )}
 
-        <div className="hidden md:block">
+        {/* lg, not md: below that there is no room for a gutter wide enough to
+            keep the legend clear of the reading column. */}
+        <div className="hidden lg:block">
           <KeyboardShortcuts sticky={sticky} />
         </div>
       </div>
