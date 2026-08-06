@@ -19,13 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        {/*
-          The right gutter reserves room for the fixed shortcut legend, so the
-          reading column centres in the space that is left rather than sliding
-          underneath it when the sentence detail grows. The legend only appears
-          at lg and up, which is exactly where the gutter kicks in.
-        */}
-        <div className="font-inter flex flex-col items-center justify-center min-h-screen bg-[#F5F5F5] dark:bg-zinc-900 p-4 lg:pr-72 relative overflow-hidden">
+        <div className="font-inter flex flex-col items-center justify-center min-h-screen bg-[#F5F5F5] dark:bg-zinc-900 p-4 relative overflow-hidden">
           <div className="absolute -bottom-[2%] -right-[10%] h-40 w-40 lg:-top-[10%] lg:h-96 lg:w-96">
             <div className="relative bottom-0 left-0 h-full w-full rounded-full bg-gradient-to-b from-blue-400/30 to-red-600/30 blur-[70px] filter" />
           </div>

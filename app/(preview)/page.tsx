@@ -108,8 +108,15 @@ export default function Home() {
           onSubmit={handleGenerateSentences}
         />
 
+        {/*
+          The right gutter reserves room for the fixed shortcut legend so the
+          reading column never slides underneath it. It lives here rather than
+          on the page wrapper so it only applies while reading - applied
+          globally it pushed the topic input off centre on the landing screen,
+          which has no legend to make room for.
+        */}
         {hasTokens && (
-          <>
+          <div className="lg:pr-72">
             <TokensContainer
               setFocusedIndex={setFocusedIndex}
               rtl={object?.rtl}
@@ -134,14 +141,20 @@ export default function Home() {
             <p className="mt-4 text-center text-xs text-zinc-400 dark:text-zinc-500 lg:hidden">
               Tap a word to reveal it. Tap again to cycle.
             </p>
-          </>
-        )}
 
-        {/* lg, not md: below that there is no room for a gutter wide enough to
-            keep the legend clear of the reading column. */}
-        <div className="hidden lg:block">
-          <KeyboardShortcuts sticky={sticky} />
-        </div>
+            {/*
+              Only once there is something to drive. Every shortcut here acts
+              on tokens, so on the landing screen the legend described a UI
+              that did not exist yet - and competed with the input for space.
+
+              lg, not md: below that there is no room for a gutter wide enough
+              to keep the legend clear of the reading column.
+            */}
+            <div className="hidden lg:block">
+              <KeyboardShortcuts sticky={sticky} />
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
