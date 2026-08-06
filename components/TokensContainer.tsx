@@ -78,6 +78,7 @@ export function TokensContainer({
                 >
                   <TokenView
                     token={token}
+                    tokenKey={globalIndex}
                     revealState={
                       globalIndex === focusedIndex ? revealState : "original"
                     }

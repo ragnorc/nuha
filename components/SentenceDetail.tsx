@@ -10,7 +10,54 @@ interface SentenceDetailProps {
   onToggleNotes: () => void;
   onSpeak: (text: string | undefined | null) => void;
   speakingText: string | null;
+  loadingText: string | null;
   rtl: boolean;
+}
+
+/**
+ * Speaker control with three states: idle, generating, playing.
+ *
+ * Synthesis can take a few seconds, so generating gets a spinner rather than
+ * the same pulse as playback - otherwise there is no way to tell a slow clip
+ * from a broken button.
+ */
+function SpeakButton({
+  text,
+  label,
+  speakingText,
+  loadingText,
+  onSpeak,
+  className = "",
+}: {
+  text: string | undefined | null;
+  label: string;
+  speakingText: string | null;
+  loadingText: string | null;
+  onSpeak: (text: string | undefined | null) => void;
+  className?: string;
+}) {
+  const trimmed = text?.trim();
+  const isLoading = !!trimmed && loadingText === trimmed;
+  const isSpeaking = !!trimmed && speakingText === trimmed;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSpeak(text)}
+      disabled={!trimmed || isLoading}
+      aria-label={
+        isLoading ? `Generating audio for ${label}` : `Read ${label} aloud`
+      }
+      aria-busy={isLoading}
+      className={`shrink-0 rounded-full text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-700 dark:hover:text-zinc-100 disabled:hover:bg-transparent disabled:opacity-60 transition-colors ${className}`}
+    >
+      {isLoading ? (
+        <span className="block h-[1em] w-[1em] animate-spin rounded-full border-2 border-current border-t-transparent" />
+      ) : (
+        <FaVolumeHigh className={isSpeaking ? "animate-pulse" : ""} />
+      )}
+    </button>
+  );
 }
 
 export function SentenceDetail({
@@ -21,13 +68,13 @@ export function SentenceDetail({
   onToggleNotes,
   onSpeak,
   speakingText,
+  loadingText,
   rtl,
 }: SentenceDetailProps) {
   if (!sentence) return null;
 
   const notes = sentence.grammatical_notes?.filter(Boolean) ?? [];
   const original = sentence.original_sentence;
-  const isSpeaking = !!original && speakingText === original.trim();
 
   // The model returns "" for languages that don't need it, so only show a
   // transliteration line when there is genuinely something to read.
@@ -42,15 +89,14 @@ export function SentenceDetail({
     >
       <div className="rounded-xl bg-white dark:bg-zinc-800 px-4 py-3 shadow-[0px_0px_1px_rgba(0,0,0,0.04),0px_1px_1px_rgba(0,0,0,0.04),0px_3px_3px_rgba(0,0,0,0.04),0px_6px_6px_rgba(0,0,0,0.04)]">
         <div className="flex items-start gap-3">
-          <button
-            type="button"
-            onClick={() => onSpeak(original)}
-            disabled={!original}
-            aria-label="Read this sentence aloud"
-            className="mt-0.5 shrink-0 rounded-full p-2 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-700 dark:hover:text-zinc-100 disabled:opacity-30 transition-colors"
-          >
-            <FaVolumeHigh className={isSpeaking ? "animate-pulse" : ""} />
-          </button>
+          <SpeakButton
+            text={original}
+            label="this sentence"
+            speakingText={speakingText}
+            loadingText={loadingText}
+            onSpeak={onSpeak}
+            className="mt-0.5 p-2"
+          />
 
           <div className="min-w-0 flex-1" dir={rtl ? "rtl" : "ltr"}>
             <p className="text-sm text-zinc-900 dark:text-zinc-100">
@@ -80,20 +126,14 @@ export function SentenceDetail({
                 {role}
               </span>
             ))}
-            <button
-              type="button"
-              onClick={() => onSpeak(focusedToken.original)}
-              aria-label={`Read ${focusedToken.original} aloud`}
-              className="rounded-full p-1 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
-            >
-              <FaVolumeHigh
-                className={
-                  speakingText === focusedToken.original?.trim()
-                    ? "animate-pulse"
-                    : ""
-                }
-              />
-            </button>
+            <SpeakButton
+              text={focusedToken.original}
+              label={focusedToken.original ?? "this word"}
+              speakingText={speakingText}
+              loadingText={loadingText}
+              onSpeak={onSpeak}
+              className="p-1"
+            />
           </div>
         )}
 
@@ -116,22 +156,26 @@ export function SentenceDetail({
 
             <AnimatePresence initial={false}>
               {showNotes && (
-                <motion.ul
+                <motion.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.2 }}
                   className="overflow-hidden"
                 >
-                  {notes.map((note, index) => (
-                    <li
-                      key={index}
-                      className="mt-1.5 text-xs leading-relaxed text-zinc-600 dark:text-zinc-300"
-                    >
-                      {note}
-                    </li>
-                  ))}
-                </motion.ul>
+                  {/* Capped so a talkative sentence cannot grow the card past
+                      the viewport and push the reading column off screen. */}
+                  <ul className="max-h-40 overflow-y-auto pr-1">
+                    {notes.map((note, index) => (
+                      <li
+                        key={index}
+                        className="mt-1.5 text-xs leading-relaxed text-zinc-600 dark:text-zinc-300"
+                      >
+                        {note}
+                      </li>
+                    ))}
+                  </ul>
+                </motion.div>
               )}
             </AnimatePresence>
           </div>

@@ -18,9 +18,16 @@ interface TokenViewProps {
   token: PartialToken;
   revealState: RevealState;
   isFocused: boolean;
+  /** Identity of the token, so moving between words remounts the text. */
+  tokenKey: number;
 }
 
-export function TokenView({ token, revealState, isFocused }: TokenViewProps) {
+export function TokenView({
+  token,
+  revealState,
+  isFocused,
+  tokenKey,
+}: TokenViewProps) {
   const isOriginal = revealState === "original";
   const revealed = isOriginal ? token.original : token[revealState];
 
@@ -45,8 +52,15 @@ export function TokenView({ token, revealState, isFocused }: TokenViewProps) {
       transition={{ duration: 0.4, ease: "easeInOut" }}
     >
       <AnimatePresence mode="wait">
+        {/*
+          Keyed on the token as well as the view. In sticky mode the view stays
+          put while you move between words, so keying on `revealState` alone
+          left React reconciling the character spans instead of remounting:
+          letters at shared indices froze in place while only the extra ones
+          staggered in. Including the token forces a clean exit/enter per word.
+        */}
         <AnimatedText
-          key={revealState}
+          key={`${tokenKey}:${revealState}`}
           text={content ?? ""}
           className="inline-block whitespace-nowrap"
           isOriginal={isOriginal}
@@ -94,7 +108,10 @@ function AnimatedText({
           key={index}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: index * 0.05 }}
+          // Capped: at a flat 0.05s per character a longer translation took
+          // most of a second to finish appearing, which reads as lag when
+          // you are arrowing through words rather than waiting on a stream.
+          transition={{ delay: Math.min(index * 0.03, 0.35) }}
         >
           {char}
         </motion.span>

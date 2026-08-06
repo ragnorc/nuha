@@ -57,7 +57,7 @@ export default function Home() {
   const { focusedIndex, revealState, cycleView, setFocusedIndex, sticky } =
     useTokenNavigation(flat, object?.rtl);
 
-  const { speak, speakingText } = useSpeech();
+  const { speak, speakingText, loadingText } = useSpeech();
 
   const focused = flat[focusedIndex];
   const focusedSentence = focused
@@ -127,6 +127,7 @@ export default function Home() {
               onToggleNotes={() => setShowNotes((value) => !value)}
               onSpeak={speak}
               speakingText={speakingText}
+              loadingText={loadingText}
               rtl={!!object?.rtl}
             />
 
