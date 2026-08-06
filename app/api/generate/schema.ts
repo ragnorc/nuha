@@ -11,7 +11,9 @@ export const languageAnalysisSchema = z.object({
     translation: z.string(),
     tokens: z.array(z.object({
       original: z.string(),
-      transliteration: z.string().optional(),
+      // Strict structured outputs require every property to be listed in
+      // `required`, so "may be absent" has to be nullable rather than optional.
+      transliteration: z.string().nullable(),
       translation: z.string(),
       part_of_speech: z.string(),
       // ... (other token properties)

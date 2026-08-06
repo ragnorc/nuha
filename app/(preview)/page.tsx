@@ -3,7 +3,7 @@
 
 "use client";
 
-import { experimental_useObject } from "ai/react";
+import { useObject } from "@ai-sdk/react";
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { TopicInput } from "@/components/TopicInput";
@@ -24,7 +24,7 @@ export default function Home() {
     isLoading: isLoadingAnalysis,
     object,
     stop,
-  } = experimental_useObject({
+  } = useObject({
     api: "/api/generate",
     schema: languageAnalysisSchema,
     onError: (error) => {
