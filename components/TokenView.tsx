@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { PartialToken } from "@/app/api/generate/schema";
+import type { RevealState } from "@/hooks/useTokenNavigation";
 import { Inter } from "next/font/google";
 
 const inter = Inter({
@@ -7,46 +8,30 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
+const BADGES: Record<Exclude<RevealState, "original">, string> = {
+  transliteration: "TL",
+  part_of_speech: "POS",
+  translation: "TR",
+};
+
 interface TokenViewProps {
   token: PartialToken;
-  revealState:
-    | "original"
-    | "transliteration"
-    | "part_of_speech"
-    | "translation";
+  revealState: RevealState;
   isFocused: boolean;
 }
 
 export function TokenView({ token, revealState, isFocused }: TokenViewProps) {
-  const getRevealContent = () => {
-    switch (revealState) {
-      case "original":
-        return token.original;
-      case "transliteration":
-        return token.transliteration;
-      case "part_of_speech":
-        return token.part_of_speech;
-      case "translation":
-        return token.translation;
-    }
-  };
-
-  const getBadgeText = () => {
-    switch (revealState) {
-      case "original":
-        return "";
-      case "transliteration":
-        return token.transliteration ? "TL" : "...";
-      case "part_of_speech":
-        return token.part_of_speech ? "POS" : "...";
-      case "translation":
-        return token.translation ? "TR" : "...";
-    }
-  };
-
   const isOriginal = revealState === "original";
-  const isLoading = !token[revealState];
-  const content = getRevealContent();
+  const revealed = isOriginal ? token.original : token[revealState];
+
+  // In sticky mode the reveal carries across words, so we land on tokens that
+  // have nothing for the current view - Latin-script words have no
+  // transliteration, and mid-stream a field may simply not have arrived yet.
+  // Fall back to the original word rather than rendering an empty chip.
+  const isUnavailable = !isOriginal && !revealed;
+  const content = isUnavailable ? token.original : revealed;
+  const badge = isOriginal || isUnavailable ? undefined : BADGES[revealState];
+  const isLoading = isUnavailable;
   return (
     <motion.div
       layout
@@ -65,7 +50,7 @@ export function TokenView({ token, revealState, isFocused }: TokenViewProps) {
           text={content ?? ""}
           className="inline-block whitespace-nowrap"
           isOriginal={isOriginal}
-          badge={!isOriginal ? getBadgeText() : undefined}
+          badge={badge}
         />
       </AnimatePresence>
     </motion.div>

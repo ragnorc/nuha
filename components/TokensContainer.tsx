@@ -1,15 +1,12 @@
 import { motion } from "framer-motion";
-import { PartialLanguageAnalysis } from "@/app/api/generate/schema";
+import { useRef, useEffect } from "react";
 import { TokenView } from "@/components/TokenView";
-import { useRef, useEffect, useMemo } from "react";
+import type { RevealState } from "@/hooks/useTokenNavigation";
+import type { TokenGroup } from "@/utils/tokens";
 
 interface TokensContainerProps {
-  sentences: PartialLanguageAnalysis | undefined;
-  revealState:
-    | "original"
-    | "transliteration"
-    | "part_of_speech"
-    | "translation";
+  groups: TokenGroup[];
+  revealState: RevealState;
   focusedIndex: number;
   rtl: boolean | undefined;
   cycleView: (direction: 1 | -1, reset?: boolean) => void;
@@ -17,56 +14,33 @@ interface TokensContainerProps {
 }
 
 export function TokensContainer({
-  sentences,
+  groups,
   revealState,
   focusedIndex,
   cycleView,
   rtl = false,
   setFocusedIndex,
 }: TokensContainerProps) {
-  const flatTokens = useMemo(
-    () =>
-      sentences?.flatMap(
-        (sentence) =>
-          sentence?.tokens?.filter(
-            (token): token is NonNullable<typeof token> =>
-              !!token && "original" in token,
-          ) ?? [],
-      ) ?? [],
-    [sentences],
-  );
-
-  const containerRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const currentSentenceIndex = sentences?.findIndex((sentence) =>
-      sentence?.tokens?.some(
-        (token) => token && flatTokens.indexOf(token) === focusedIndex,
-      ),
+    const focusedElement = scrollRef.current?.querySelector(
+      `[data-index="${focusedIndex}"]`,
     );
 
-    if (currentSentenceIndex !== undefined && currentSentenceIndex !== -1) {
-      const container = containerRefs.current[currentSentenceIndex];
-      const focusedElement = container?.querySelector(
-        `[data-index="${focusedIndex}"]`,
-      );
-
-      if (focusedElement) {
-        focusedElement.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-          inline: "nearest",
-        });
-      }
-    }
-  }, [focusedIndex, sentences, flatTokens]);
+    focusedElement?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+      inline: "nearest",
+    });
+  }, [focusedIndex, groups]);
 
   const handleTokenClick = (globalIndex: number) => {
     if (globalIndex === focusedIndex) {
-      // If clicking the same token, just cycle the view
+      // Tapping the focused word again advances it to the next view. This is
+      // the only way to reveal anything without a keyboard.
       cycleView(1);
     } else {
-      // For a new token, reset view state and then set focus
       cycleView(1, true);
       setFocusedIndex(globalIndex);
     }
@@ -79,44 +53,38 @@ export function TokensContainer({
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="w-full max-h-[60vh] py-4 px-2 overflow-y-auto">
+      <div ref={scrollRef} className="w-full max-h-[45vh] py-4 px-2 overflow-y-auto">
         <div className={`flex flex-col ${rtl ? "items-end" : "items-start"}`}>
-          {sentences?.map((sentence, sentenceIndex) => (
+          {groups.map(({ sentenceIndex, tokens }) => (
             <div
               key={sentenceIndex}
-              ref={(el: HTMLDivElement | null) => {
-                if (el) containerRefs.current[sentenceIndex] = el;
-              }}
               className={`flex flex-wrap ${
                 rtl ? "flex-row-reverse" : "flex-row"
               } gap-x-1.5 w-full`}
             >
-              {sentence?.tokens
-                ?.filter(
-                  (token): token is NonNullable<typeof token> =>
-                    !!token && "original" in token,
-                )
-                .map((token, tokenIndex) => {
-                  const globalIndex = flatTokens.findIndex((t) => t === token);
-                  return (
-                    <div
-                      key={tokenIndex}
-                      className="mb-2 cursor-pointer"
-                      data-index={globalIndex}
-                      onClick={() => handleTokenClick(globalIndex)}
-                    >
-                      <TokenView
-                        token={token}
-                        revealState={
-                          globalIndex === focusedIndex
-                            ? revealState
-                            : "original"
-                        }
-                        isFocused={globalIndex === focusedIndex}
-                      />
-                    </div>
-                  );
-                })}
+              {tokens.map(({ token, globalIndex }) => (
+                <button
+                  key={globalIndex}
+                  type="button"
+                  className="mb-2 cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-100"
+                  data-index={globalIndex}
+                  aria-label={
+                    token.translation
+                      ? `${token.original}, meaning ${token.translation}`
+                      : token.original
+                  }
+                  aria-pressed={globalIndex === focusedIndex}
+                  onClick={() => handleTokenClick(globalIndex)}
+                >
+                  <TokenView
+                    token={token}
+                    revealState={
+                      globalIndex === focusedIndex ? revealState : "original"
+                    }
+                    isFocused={globalIndex === focusedIndex}
+                  />
+                </button>
+              ))}
             </div>
           ))}
         </div>

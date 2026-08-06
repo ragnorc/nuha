@@ -32,5 +32,10 @@ export type PartialLanguageAnalysis = DeepPartial<typeof languageAnalysisSchema>
 
 export type LanguageAnalysis = z.infer<typeof languageAnalysisSchema>["analysis"];
 
+// A single sentence as it looks mid-stream, before every field has arrived.
+export type PartialSentence = NonNullable<
+  NonNullable<PartialLanguageAnalysis>[number]
+>;
+
 // Define a type for partial token
 export type PartialToken = DeepPartial<LanguageAnalysis[number]['tokens'][number]>;

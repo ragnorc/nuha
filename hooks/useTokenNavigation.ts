@@ -1,28 +1,30 @@
 import { useState, useCallback } from "react";
-import { PartialLanguageAnalysis } from "@/app/api/generate/schema";
 import { useHotkeys } from "@/hooks/useHotkey";
+import type { FlatToken } from "@/utils/tokens";
 
-type RevealState =
+export type RevealState =
   | "original"
   | "transliteration"
   | "part_of_speech"
   | "translation";
 
+const STATES: RevealState[] = [
+  "original",
+  "transliteration",
+  "part_of_speech",
+  "translation",
+];
+
 export function useTokenNavigation(
-  sentences: PartialLanguageAnalysis | undefined,
+  flatTokens: FlatToken[],
   rtl: boolean | undefined,
 ) {
   const [focusedIndex, setFocusedIndex] = useState<number>(0);
   const [revealState, setRevealState] = useState<RevealState>("original");
-
-  const flatTokens =
-    sentences?.flatMap(
-      (sentence) =>
-        sentence?.tokens?.filter(
-          (token): token is NonNullable<typeof token> =>
-            !!token && "original" in token,
-        ) ?? [],
-    ) ?? [];
+  // When sticky, moving between words keeps whatever you were revealing.
+  // Without it you have to re-press the key on every single word, which makes
+  // reading a whole passage with translations on unusable.
+  const [sticky, setSticky] = useState<boolean>(false);
 
   const totalTokens = flatTokens.length;
 
@@ -33,14 +35,14 @@ export function useTokenNavigation(
         return newIndex >= 0 && newIndex < totalTokens ? newIndex : prev;
       });
 
-      setRevealState("original");
+      if (!sticky) setRevealState("original");
     },
-    [rtl, totalTokens],
+    [rtl, totalTokens, sticky],
   );
 
   const toggleState = useCallback(
     (state: RevealState) => {
-      const currentToken = flatTokens[focusedIndex];
+      const currentToken = flatTokens[focusedIndex]?.token;
       if (currentToken && currentToken[state]) {
         setRevealState((prev) => (prev === state ? "original" : state));
       }
@@ -50,34 +52,26 @@ export function useTokenNavigation(
 
   const cycleView = useCallback(
     (direction: 1 | -1, reset = false) => {
-      const states: RevealState[] = [
-        "original",
-        "transliteration",
-        "part_of_speech",
-        "translation",
-      ];
-      const currentToken = flatTokens[focusedIndex];
-      console.log(focusedIndex);
-      setRevealState((prev) => {
-        let currentIndex = states.indexOf(prev);
-        let newIndex: number;
-        let newState: RevealState;
-        if (reset) currentIndex = 0;
-        for (let i = 0; i < states.length; i++) {
-          newIndex = (currentIndex + direction + states.length) % states.length;
-          newState = states[newIndex];
+      const currentToken = flatTokens[focusedIndex]?.token;
 
-          if (
-            newState === "original" ||
-            (currentToken && currentToken[newState])
-          ) {
+      setRevealState((prev) => {
+        let currentIndex = reset ? 0 : STATES.indexOf(prev);
+
+        for (let i = 0; i < STATES.length; i++) {
+          const newIndex =
+            (currentIndex + direction + STATES.length) % STATES.length;
+          const newState = STATES[newIndex];
+
+          // Skip states this token has nothing to show for - either the
+          // language has no transliteration, or it hasn't streamed in yet.
+          if (newState === "original" || currentToken?.[newState]) {
             return newState;
           }
 
           currentIndex = newIndex;
         }
 
-        return prev; // If no valid state is found, keep the current state
+        return prev;
       });
     },
     [flatTokens, focusedIndex],
@@ -90,6 +84,7 @@ export function useTokenNavigation(
   useHotkeys("T", () => toggleState("transliteration"), [toggleState]);
   useHotkeys("R", () => toggleState("translation"), [toggleState]);
   useHotkeys("P", () => toggleState("part_of_speech"), [toggleState]);
+  useHotkeys("S", () => setSticky((value) => !value), []);
 
   return {
     focusedIndex,
@@ -97,5 +92,7 @@ export function useTokenNavigation(
     revealState,
     setRevealState,
     cycleView,
+    sticky,
+    setSticky,
   };
 }
